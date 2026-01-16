@@ -477,6 +477,12 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Update {update} caused error {context.error}")
 
 
+async def post_init(application: Application) -> None:
+    """Инициализация БД после создания приложения"""
+    await db.init_db()
+    logger.info("База данных инициализирована")
+
+
 def main():
     """Главная функция для запуска бота"""
     # Проверка наличия токенов
@@ -485,10 +491,7 @@ def main():
         return
     
     # Создаем приложение
-    application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
-    
-    # Инициализируем БД
-    asyncio.run(db.init_db())
+    application = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(post_init).build()
     
     # Регистрируем обработчики
     application.add_handler(CommandHandler("start", start))
