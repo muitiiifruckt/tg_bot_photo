@@ -479,8 +479,12 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def post_init(application: Application) -> None:
     """Инициализация БД после создания приложения"""
-    await db.init_db()
-    logger.info("База данных инициализирована")
+    try:
+        await db.init_db()
+        logger.info("База данных инициализирована")
+    except Exception as e:
+        logger.error(f"Ошибка при инициализации БД: {e}", exc_info=True)
+        raise
 
 
 def main():

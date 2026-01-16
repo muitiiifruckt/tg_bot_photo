@@ -11,10 +11,14 @@ class Database:
         """Инициализация базы данных"""
         # Создаем директорию для БД, если путь содержит директорию
         db_dir = os.path.dirname(self.db_path)
-        if db_dir and not os.path.exists(db_dir):
+        if db_dir:
             os.makedirs(db_dir, exist_ok=True)
+            # Убеждаемся, что директория доступна для записи
+            if not os.access(db_dir, os.W_OK):
+                raise PermissionError(f"Нет прав на запись в директорию: {db_dir}")
         
-        async with aiosqlite.connect(self.db_path) as db:
+        # Подключаемся к БД и создаем таблицы
+        async with aiosqlite.connect(self.db_path, timeout=10.0) as db:
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     user_id INTEGER PRIMARY KEY,
