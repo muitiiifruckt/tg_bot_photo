@@ -2,6 +2,10 @@ import asyncio
 import logging
 import aiohttp
 import io
+import json
+import os
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 from config import TELEGRAM_BOT_TOKEN, RUBY_PRICE
@@ -16,6 +20,27 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Настройка логирования взаимодействий с пользователями в файл
+interaction_logger = logging.getLogger('user_interactions')
+interaction_logger.setLevel(logging.INFO)
+# Отключаем распространение на корневой логгер
+interaction_logger.propagate = False
+
+# Создаем обработчик для файла с ротацией (максимум 10MB, до 5 файлов)
+log_dir = 'logs'
+os.makedirs(log_dir, exist_ok=True)  # Создаем директорию для логов, если её нет
+
+file_handler = RotatingFileHandler(
+    os.path.join(log_dir, 'user_interactions.log'),
+    maxBytes=10*1024*1024,  # 10MB
+    backupCount=5,
+    encoding='utf-8'
+)
+file_handler.setLevel(logging.INFO)
+file_formatter = logging.Formatter('%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+file_handler.setFormatter(file_formatter)
+interaction_logger.addHandler(file_handler)
+
 # Инициализация компонентов
 db = Database()
 openrouter = OpenRouterClient()
@@ -25,6 +50,8 @@ yookassa = YooKassaPayment()
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /start"""
     user = update.effective_user
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | COMMAND: /start | NAME: {user.first_name}")
+    
     await db.get_or_create_user(
         user_id=user.id,
         username=user.username,
@@ -44,6 +71,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /generate - Сгенерировать изображение
 /profile - Мой профиль
 /buy - Купить рубины
+/feedback - Отправить совет для улучшения
 /help - Помощь
 """
     await update.message.reply_text(welcome_text)
@@ -51,15 +79,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /help"""
+    user = update.effective_user
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | COMMAND: /help")
+    
     help_text = """
 📖 Справка по боту:
 
 /generate - Сгенерировать изображение по вашему описанию
 /profile - Посмотреть свой профиль и баланс рубинов
 /buy - Купить рубины для генерации изображений
+/feedback - Отправить совет для улучшения бота
 /help - Показать эту справку
 
-💎 Генерация изображения стоит 1 рубин
+💎 Генерация изображения стоит 2 рубина
 💎 1 рубин = 5 рублей
 
 Просто отправьте описание изображения, и бот сгенерирует его для вас!
@@ -70,6 +102,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /profile"""
     user = update.effective_user
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | COMMAND: /profile")
+    
     user_data = await db.get_or_create_user(
         user_id=user.id,
         username=user.username,
@@ -90,6 +124,9 @@ Username: @{user_data['username'] or 'не указан'}
 
 async def buy_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /buy - покупка рубинов"""
+    user = update.effective_user
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | COMMAND: /buy")
+    
     text = f"""
 💎 Пополнение баланса рубинов
 
@@ -101,10 +138,10 @@ async def buy_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
     
     keyboard = [
-        [InlineKeyboardButton("💎 10 рубинов", callback_data="buy_10")],
-        [InlineKeyboardButton("💎 50 рубинов", callback_data="buy_50")],
-        [InlineKeyboardButton("💎 100 рубинов", callback_data="buy_100")],
-        [InlineKeyboardButton("💎 200 рубинов", callback_data="buy_200")],
+        [InlineKeyboardButton(f"💎 10 рубинов - {int(RUBY_PRICE * 10)} руб.", callback_data="buy_10")],
+        [InlineKeyboardButton(f"💎 50 рубинов - {int(RUBY_PRICE * 50)} руб.", callback_data="buy_50")],
+        [InlineKeyboardButton(f"💎 100 рубинов - {int(RUBY_PRICE * 100)} руб.", callback_data="buy_100")],
+        [InlineKeyboardButton(f"💎 200 рубинов - {int(RUBY_PRICE * 200)} руб.", callback_data="buy_200")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -121,6 +158,7 @@ async def buy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     user = update.effective_user
     data = query.data
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | CALLBACK: {data}")
     
     # Извлекаем количество рубинов из callback_data (buy_10, buy_50 и т.д.)
     try:
@@ -175,7 +213,9 @@ async def check_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
     query = update.callback_query
     await query.answer()
     
+    user = update.effective_user
     payment_id = query.data.replace("check_", "")
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | CALLBACK: check_payment | PAYMENT_ID: {payment_id}")
     payment_data = await db.get_payment(payment_id)
     
     if not payment_data:
@@ -208,12 +248,15 @@ async def check_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /generate"""
+    user = update.effective_user
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | COMMAND: /generate")
+    
     text = """
 🎨 Генерация изображения
 
 Отправьте описание изображения, которое вы хотите сгенерировать.
 
-💎 Стоимость: 1 рубин за генерацию
+💎 Стоимость: 2 рубина за генерацию
 
 Примеры:
 • "Красивый закат над горами"
@@ -223,10 +266,72 @@ async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(text)
 
 
+async def save_feedback_to_jsonl(username: str, text: str, user_id: int):
+    """Сохраняет отзыв в JSONL файл"""
+    feedback_file = "feedback.jsonl"
+    
+    feedback_entry = {
+        "user_id": user_id,
+        "username": username or "не указан",
+        "text": text,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    try:
+        with open(feedback_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(feedback_entry, ensure_ascii=False) + "\n")
+        return True
+    except Exception as e:
+        logger.error(f"Error saving feedback: {e}")
+        return False
+
+
+async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /feedback - сбор советов для улучшения"""
+    user = update.effective_user
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | COMMAND: /feedback")
+    
+    text = """
+💡 Совет для улучшения бота
+
+Мы ценим ваше мнение! Пожалуйста, отправьте ваш совет или пожелание по улучшению бота.
+
+Ваш отзыв поможет нам сделать бота лучше! 🙏
+"""
+    await update.message.reply_text(text)
+    
+    # Устанавливаем состояние ожидания ввода отзыва
+    context.user_data['waiting_for_feedback'] = True
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик текстовых сообщений для генерации изображений и покупки рубинов"""
     user = update.effective_user
     text = update.message.text
+    
+    # Проверяем, не ожидаем ли мы ввод отзыва
+    if context.user_data.get('waiting_for_feedback'):
+        context.user_data['waiting_for_feedback'] = False
+        
+        # Логируем отзыв
+        interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | FEEDBACK: {text[:100]}...")
+        
+        # Сохраняем отзыв в JSONL файл
+        success = await save_feedback_to_jsonl(
+            username=user.username,
+            text=text,
+            user_id=user.id
+        )
+        
+        if success:
+            await update.message.reply_text(
+                "✅ Спасибо за ваш отзыв! Мы обязательно учтем ваши пожелания. 🙏"
+            )
+        else:
+            await update.message.reply_text(
+                "❌ Произошла ошибка при сохранении отзыва. Попробуйте позже."
+            )
+        return
     
     # Проверяем, не ожидаем ли мы ввод количества рубинов
     if context.user_data.get('waiting_for_rubies'):
@@ -246,6 +351,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # Рассчитываем цену: 1 рубин = 5 рублей
             amount = rubies_count * RUBY_PRICE
+            
+            # Логируем покупку рубинов
+            interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: buy_rubies | COUNT: {rubies_count} | AMOUNT: {amount:.2f} руб.")
             
             # Создаем платеж в ЮКассе
             payment_info = yookassa.create_payment(
@@ -290,11 +398,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Если не ожидаем ввод рубинов, обрабатываем как промпт для генерации
     prompt = text
     
-    # Проверяем баланс (генерация стоит 1 рубин)
+    # Логируем запрос на генерацию
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: generate_image | PROMPT: {text[:100]}...")
+    
+    # Проверяем баланс (генерация стоит 2 рубина)
     rubies = await db.get_user_rubies(user.id)
-    GENERATION_COST = 1  # 1 рубин за генерацию
+    GENERATION_COST = 2  # 2 рубина за генерацию
     
     if rubies < GENERATION_COST:
+        interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: generate_image | STATUS: insufficient_balance | RUBIES: {rubies}")
         await update.message.reply_text(
             f"❌ Недостаточно рубинов!\n\n"
             f"Текущий баланс: {rubies} 💎\n"
@@ -331,19 +443,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"Error downloading image: {e}")
         
         if image_data:
-            # Списываем рубины перед отправкой (1 рубин за генерацию)
-            GENERATION_COST = 1
+            # Списываем рубины перед отправкой (2 рубина за генерацию)
+            GENERATION_COST = 2
             success = await db.deduct_rubies(user.id, GENERATION_COST)
             
             if success:
                 # Логируем генерацию
                 await db.log_generation(user.id, prompt, GENERATION_COST)
+                interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: image_generated | COST: {GENERATION_COST} rubies | SUCCESS")
                 
                 # Отправляем изображение
                 await status_message.delete()
                 await update.message.reply_photo(
                     photo=io.BytesIO(image_data),
-                    caption=f"🎨 Сгенерировано по запросу: {prompt}\n\n💎 Потрачено: {GENERATION_COST} рубин"
+                    caption=f"🎨 Сгенерировано по запросу: {prompt}\n\n💎 Потрачено: {GENERATION_COST} рубина"
                 )
                 
                 # Показываем новый баланс
@@ -383,6 +496,7 @@ def main():
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("buy", buy_rubies))
     application.add_handler(CommandHandler("generate", generate_command))
+    application.add_handler(CommandHandler("feedback", feedback_command))
     application.add_handler(CallbackQueryHandler(buy_callback, pattern="^buy_"))
     application.add_handler(CallbackQueryHandler(check_payment_callback, pattern="^check_"))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))

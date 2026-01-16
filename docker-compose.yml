@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  bot:
+    build: .
+    container_name: tg_photo_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Сохраняем базу данных, feedback файлы и логи на хосте
+      - ./data:/app/data
+      - ./bot_database.db:/app/bot_database.db
+      - ./feedback.jsonl:/app/feedback.jsonl
+      # Логи взаимодействий с пользователями (директория для логов)
+      - ./logs:/app/logs
+    environment:
+      - DATABASE_PATH=/app/bot_database.db

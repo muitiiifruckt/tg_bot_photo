@@ -8,7 +8,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 # OpenRouter API
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_MODEL = "google/gemini-3-pro-image-preview"
+OPENROUTER_MODEL = "google/gemini-2.5-flash-image"
 
 # YooKassa
 YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
@@ -16,7 +16,7 @@ YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 
 # Pricing - 1 рубин = 5 рублей
-RUBY_PRICE =os.getenv("RUBY_PRICE", 5)
+RUBY_PRICE = float(os.getenv("RUBY_PRICE", "5"))
 
 # Database
 DATABASE_PATH = "bot_database.db"
