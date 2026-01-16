@@ -15,8 +15,8 @@ YOOKASSA_SHOP_ID = os.getenv("YOOKASSA_SHOP_ID")
 YOOKASSA_SECRET_KEY = os.getenv("YOOKASSA_SECRET_KEY")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")
 
-# Pricing
-PRICE_PER_GENERATION = int(os.getenv("PRICE_PER_GENERATION", "10"))
+# Pricing - 1 рубин = 5 рублей
+RUBY_PRICE =os.getenv("RUBY_PRICE", 5)
 
 # Database
 DATABASE_PATH = "bot_database.db"

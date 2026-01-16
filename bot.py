@@ -4,7 +4,7 @@ import aiohttp
 import io
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
-from config import TELEGRAM_BOT_TOKEN, PRICE_PER_GENERATION
+from config import TELEGRAM_BOT_TOKEN, RUBY_PRICE
 from database import Database
 from openrouter_client import OpenRouterClient
 from yookassa_payment import YooKassaPayment
@@ -51,7 +51,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /help"""
-    help_text = f"""
+    help_text = """
 📖 Справка по боту:
 
 /generate - Сгенерировать изображение по вашему описанию
@@ -59,7 +59,8 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /buy - Купить рубины для генерации изображений
 /help - Показать эту справку
 
-💎 Стоимость одной генерации: {PRICE_PER_GENERATION} рубинов
+💎 Генерация изображения стоит 1 рубин
+💎 1 рубин = 5 рублей
 
 Просто отправьте описание изображения, и бот сгенерирует его для вас!
 """
@@ -89,22 +90,28 @@ Username: @{user_data['username'] or 'не указан'}
 
 async def buy_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /buy - покупка рубинов"""
-    user = update.effective_user
+    text = f"""
+💎 Пополнение баланса рубинов
+
+Цена: 1 рубин = {int(RUBY_PRICE)} рублей
+
+Введите количество рубинов, которое хотите купить (например: 10, 50, 100)
+
+Или выберите готовый вариант:
+"""
     
     keyboard = [
-        [InlineKeyboardButton("💎 50 рубинов - 100₽", callback_data="buy_50")],
-        [InlineKeyboardButton("💎 100 рубинов - 180₽", callback_data="buy_100")],
-        [InlineKeyboardButton("💎 200 рубинов - 350₽", callback_data="buy_200")],
-        [InlineKeyboardButton("💎 500 рубинов - 800₽", callback_data="buy_500")],
+        [InlineKeyboardButton("💎 10 рубинов", callback_data="buy_10")],
+        [InlineKeyboardButton("💎 50 рубинов", callback_data="buy_50")],
+        [InlineKeyboardButton("💎 100 рубинов", callback_data="buy_100")],
+        [InlineKeyboardButton("💎 200 рубинов", callback_data="buy_200")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
-    text = """
-💎 Пополнение баланса рубинов
-
-Выберите количество рубинов для покупки:
-"""
     await update.message.reply_text(text, reply_markup=reply_markup)
+    
+    # Устанавливаем состояние ожидания ввода количества рубинов
+    context.user_data['waiting_for_rubies'] = True
 
 
 async def buy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -115,33 +122,33 @@ async def buy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     data = query.data
     
-    # Маппинг количества рубинов и цены
-    packages = {
-        "buy_50": {"rubies": 50, "price": 100.0},
-        "buy_100": {"rubies": 100, "price": 180.0},
-        "buy_200": {"rubies": 200, "price": 350.0},
-        "buy_500": {"rubies": 500, "price": 800.0},
-    }
-    
-    if data not in packages:
-        await query.edit_message_text("❌ Неверный пакет")
+    # Извлекаем количество рубинов из callback_data (buy_10, buy_50 и т.д.)
+    try:
+        rubies_count = int(data.replace("buy_", ""))
+    except ValueError:
+        await query.edit_message_text("❌ Неверный формат")
         return
     
-    package = packages[data]
+    if rubies_count <= 0:
+        await query.edit_message_text("❌ Количество рубинов должно быть больше 0")
+        return
+    
+    # Рассчитываем цену: 1 рубин = 5 рублей
+    amount = rubies_count * RUBY_PRICE
     
     # Создаем платеж в ЮКассе
     payment_info = yookassa.create_payment(
-        amount=package["price"],
+        amount=amount,
         user_id=user.id,
-        rubies=package["rubies"]
+        rubies=rubies_count
     )
     
     # Сохраняем платеж в БД
     await db.create_payment(
         payment_id=payment_info["payment_id"],
         user_id=user.id,
-        amount=package["price"],
-        rubies=package["rubies"]
+        amount=amount,
+        rubies=rubies_count
     )
     
     keyboard = [
@@ -153,8 +160,9 @@ async def buy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = f"""
 💳 Создан платеж
 
-Количество рубинов: {package['rubies']} 💎
-Сумма: {package['price']:.2f} ₽
+Количество рубинов: {rubies_count} 💎
+Сумма: {amount:.2f} ₽
+(1 рубин = {int(RUBY_PRICE)} рублей)
 
 Нажмите кнопку "Оплатить" для перехода к оплате через СБП.
 После оплаты нажмите "Проверить оплату".
@@ -200,12 +208,12 @@ async def check_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
 
 async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /generate"""
-    text = f"""
+    text = """
 🎨 Генерация изображения
 
 Отправьте описание изображения, которое вы хотите сгенерировать.
 
-💎 Стоимость: {PRICE_PER_GENERATION} рубинов за генерацию
+💎 Стоимость: 1 рубин за генерацию
 
 Примеры:
 • "Красивый закат над горами"
@@ -216,18 +224,81 @@ async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Обработчик текстовых сообщений для генерации изображений"""
+    """Обработчик текстовых сообщений для генерации изображений и покупки рубинов"""
     user = update.effective_user
-    prompt = update.message.text
+    text = update.message.text
     
-    # Проверяем баланс
+    # Проверяем, не ожидаем ли мы ввод количества рубинов
+    if context.user_data.get('waiting_for_rubies'):
+        context.user_data['waiting_for_rubies'] = False
+        
+        # Пытаемся распарсить количество рубинов
+        try:
+            rubies_count = int(text.strip())
+            
+            if rubies_count <= 0:
+                await update.message.reply_text("❌ Количество рубинов должно быть больше 0")
+                return
+            
+            if rubies_count > 10000:
+                await update.message.reply_text("❌ Максимальное количество рубинов за раз: 10000")
+                return
+            
+            # Рассчитываем цену: 1 рубин = 5 рублей
+            amount = rubies_count * RUBY_PRICE
+            
+            # Создаем платеж в ЮКассе
+            payment_info = yookassa.create_payment(
+                amount=amount,
+                user_id=user.id,
+                rubies=rubies_count
+            )
+            
+            # Сохраняем платеж в БД
+            await db.create_payment(
+                payment_id=payment_info["payment_id"],
+                user_id=user.id,
+                amount=amount,
+                rubies=rubies_count
+            )
+            
+            keyboard = [
+                [InlineKeyboardButton("💳 Оплатить", url=payment_info["confirmation_url"])],
+                [InlineKeyboardButton("✅ Проверить оплату", callback_data=f"check_{payment_info['payment_id']}")]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            payment_text = f"""
+💳 Создан платеж
+
+Количество рубинов: {rubies_count} 💎
+Сумма: {amount:.2f} ₽
+(1 рубин = {int(RUBY_PRICE)} рублей)
+
+Нажмите кнопку "Оплатить" для перехода к оплате через СБП.
+После оплаты нажмите "Проверить оплату".
+"""
+            await update.message.reply_text(payment_text, reply_markup=reply_markup)
+            return
+            
+        except ValueError:
+            # Если введен не число, сбрасываем флаг и обрабатываем как промпт
+            context.user_data['waiting_for_rubies'] = False
+            # Продолжаем обработку как обычное сообщение (будет обработано ниже как промпт)
+            pass
+    
+    # Если не ожидаем ввод рубинов, обрабатываем как промпт для генерации
+    prompt = text
+    
+    # Проверяем баланс (генерация стоит 1 рубин)
     rubies = await db.get_user_rubies(user.id)
+    GENERATION_COST = 1  # 1 рубин за генерацию
     
-    if rubies < PRICE_PER_GENERATION:
+    if rubies < GENERATION_COST:
         await update.message.reply_text(
             f"❌ Недостаточно рубинов!\n\n"
             f"Текущий баланс: {rubies} 💎\n"
-            f"Требуется: {PRICE_PER_GENERATION} 💎\n\n"
+            f"Требуется: {GENERATION_COST} 💎\n\n"
             f"Используйте /buy для пополнения баланса."
         )
         return
@@ -260,18 +331,19 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"Error downloading image: {e}")
         
         if image_data:
-            # Списываем рубины перед отправкой
-            success = await db.deduct_rubies(user.id, PRICE_PER_GENERATION)
+            # Списываем рубины перед отправкой (1 рубин за генерацию)
+            GENERATION_COST = 1
+            success = await db.deduct_rubies(user.id, GENERATION_COST)
             
             if success:
                 # Логируем генерацию
-                await db.log_generation(user.id, prompt, PRICE_PER_GENERATION)
+                await db.log_generation(user.id, prompt, GENERATION_COST)
                 
                 # Отправляем изображение
                 await status_message.delete()
                 await update.message.reply_photo(
                     photo=io.BytesIO(image_data),
-                    caption=f"🎨 Сгенерировано по запросу: {prompt}\n\n💎 Потрачено: {PRICE_PER_GENERATION} рубинов"
+                    caption=f"🎨 Сгенерировано по запросу: {prompt}\n\n💎 Потрачено: {GENERATION_COST} рубин"
                 )
                 
                 # Показываем новый баланс
