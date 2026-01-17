@@ -12,15 +12,39 @@ class OpenRouterClient:
         )
         self.model = OPENROUTER_MODEL
 
-    async def generate_image(self, prompt: str):
-        """Генерация изображения по промпту"""
+    def encode_image_to_base64(self, image_bytes: bytes) -> str:
+        """Кодирование изображения в base64"""
+        return base64.b64encode(image_bytes).decode('utf-8')
+
+    async def generate_image(self, prompt: str, input_image: bytes = None):
+        """Генерация изображения по промпту, опционально на основе входного изображения"""
         try:
+            # Формируем контент сообщения
+            if input_image:
+                # Если есть входное изображение, формируем multimodal content
+                base64_image = self.encode_image_to_base64(input_image)
+                content = [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64_image}"
+                        }
+                    },
+                    {
+                        "type": "text",
+                        "text": f"Создай новое изображение на основе этого, учитывая следующее описание: {prompt}"
+                    }
+                ]
+            else:
+                # Обычная генерация по тексту
+                content = prompt
+            
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {
                         "role": "user",
-                        "content": prompt
+                        "content": content
                     }
                 ],
                 extra_body={"modalities": ["image", "text"]}

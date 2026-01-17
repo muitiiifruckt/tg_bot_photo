@@ -94,7 +94,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 💎 Генерация изображения стоит 2 рубина
 💎 1 рубин = 5 рублей
 
-Просто отправьте описание изображения, и бот сгенерирует его для вас!
+🎨 Способы генерации:
+1. Отправьте текстовое описание - бот создаст изображение с нуля
+2. Отправьте фото - бот попросит описание для модификации
+3. Отправьте фото с подписью - бот сразу начнет генерацию
+
+Примеры: "Красивый закат", "Кот в космосе" или загрузите фото с подписью "В стиле аниме"
 """
     await update.message.reply_text(help_text)
 
@@ -174,28 +179,29 @@ async def buy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Рассчитываем цену: 1 рубин = 5 рублей
     amount = rubies_count * RUBY_PRICE
     
-    # Создаем платеж в ЮКассе
-    payment_info = yookassa.create_payment(
-        amount=amount,
-        user_id=user.id,
-        rubies=rubies_count
-    )
-    
-    # Сохраняем платеж в БД
-    await db.create_payment(
-        payment_id=payment_info["payment_id"],
-        user_id=user.id,
-        amount=amount,
-        rubies=rubies_count
-    )
-    
-    keyboard = [
-        [InlineKeyboardButton("💳 Оплатить", url=payment_info["confirmation_url"])],
-        [InlineKeyboardButton("✅ Проверить оплату", callback_data=f"check_{payment_info['payment_id']}")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    text = f"""
+    try:
+        # Создаем платеж в ЮКассе
+        payment_info = yookassa.create_payment(
+            amount=amount,
+            user_id=user.id,
+            rubies=rubies_count
+        )
+        
+        # Сохраняем платеж в БД
+        await db.create_payment(
+            payment_id=payment_info["payment_id"],
+            user_id=user.id,
+            amount=amount,
+            rubies=rubies_count
+        )
+        
+        keyboard = [
+            [InlineKeyboardButton("💳 Оплатить", url=payment_info["confirmation_url"])],
+            [InlineKeyboardButton("✅ Проверить оплату", callback_data=f"check_{payment_info['payment_id']}")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        text = f"""
 💳 Создан платеж
 
 Количество рубинов: {rubies_count} 💎
@@ -205,7 +211,13 @@ async def buy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Нажмите кнопку "Оплатить" для перехода к оплате через СБП.
 После оплаты нажмите "Проверить оплату".
 """
-    await query.edit_message_text(text, reply_markup=reply_markup)
+        await query.edit_message_text(text, reply_markup=reply_markup)
+    except Exception as e:
+        logger.error(f"Ошибка при создании платежа: {e}", exc_info=True)
+        await query.edit_message_text(
+            "❌ Произошла ошибка при создании платежа. "
+            "Пожалуйста, попробуйте позже или обратитесь к администратору."
+        )
 
 
 async def check_payment_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -255,13 +267,18 @@ async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🎨 Генерация изображения
 
 Отправьте описание изображения, которое вы хотите сгенерировать.
+Или отправьте фото + описание для генерации на основе изображения.
 
 💎 Стоимость: 2 рубина за генерацию
 
-Примеры:
+Примеры текстовых промптов:
 • "Красивый закат над горами"
 • "Кот в космосе"
 • "Футуристический город"
+
+Для генерации на основе фото:
+1. Отправьте фото
+2. Отправьте описание того, как изменить изображение
 """
     await update.message.reply_text(text)
 
@@ -304,10 +321,128 @@ async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['waiting_for_feedback'] = True
 
 
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик фотографий для генерации на основе изображения"""
+    user = update.effective_user
+    
+    # Проверяем баланс
+    rubies = await db.get_user_rubies(user.id)
+    GENERATION_COST = 2
+    
+    if rubies < GENERATION_COST:
+        interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: photo_upload | STATUS: insufficient_balance")
+        await update.message.reply_text(
+            f"❌ Недостаточно рубинов для генерации!\n\n"
+            f"Текущий баланс: {rubies} 💎\n"
+            f"Требуется: {GENERATION_COST} 💎\n\n"
+            f"Используйте /buy для пополнения баланса."
+        )
+        return
+    
+    # Получаем фото
+    photo = update.message.photo[-1]  # Берем самое большое разрешение
+    photo_file = await photo.get_file()
+    
+    # Скачиваем фото в байты
+    photo_bytes = await photo_file.download_as_bytearray()
+    
+    # Сохраняем фото в контексте пользователя
+    context.user_data['input_image'] = bytes(photo_bytes)
+    context.user_data['waiting_for_image_prompt'] = True
+    
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: photo_uploaded")
+    
+    caption = update.message.caption if update.message.caption else None
+    
+    if caption:
+        # Если есть подпись к фото, используем её как промпт
+        context.user_data['waiting_for_image_prompt'] = False
+        await process_image_generation(update, context, caption, photo_bytes)
+    else:
+        # Запрашиваем промпт
+        await update.message.reply_text(
+            "📸 Фото получено! Теперь отправьте описание того, как вы хотите изменить это изображение.\n\n"
+            "Примеры:\n"
+            "• 'Сделай это в стиле аниме'\n"
+            "• 'Преврати это в картину маслом'\n"
+            "• 'Добавь фантастические элементы'"
+        )
+
+
+async def process_image_generation(update: Update, context: ContextTypes.DEFAULT_TYPE, prompt: str, input_image: bytes):
+    """Обработка генерации изображения на основе входного"""
+    user = update.effective_user
+    
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: generate_from_image | PROMPT: {prompt[:100]}...")
+    
+    status_message = await update.message.reply_text("⏳ Генерирую изображение на основе вашего фото... Это может занять некоторое время.")
+    
+    try:
+        # Генерируем изображение
+        image_url = await openrouter.generate_image(prompt, input_image=input_image)
+        
+        if not image_url:
+            await status_message.edit_text("❌ Ошибка при генерации изображения. Попробуйте еще раз.")
+            return
+        
+        # Обрабатываем изображение
+        image_data = None
+        
+        if image_url.startswith("data:image"):
+            image_data = openrouter.decode_base64_image(image_url)
+        elif image_url.startswith("http"):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(image_url) as resp:
+                        if resp.status == 200:
+                            image_data = await resp.read()
+            except Exception as e:
+                logger.error(f"Error downloading image: {e}")
+        
+        if image_data:
+            # Списываем рубины
+            GENERATION_COST = 2
+            success = await db.deduct_rubies(user.id, GENERATION_COST)
+            
+            if success:
+                await db.log_generation(user.id, f"[Image-to-Image] {prompt}", GENERATION_COST)
+                interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: image_generated_from_photo | COST: {GENERATION_COST} rubies | SUCCESS")
+                
+                await status_message.delete()
+                await update.message.reply_photo(
+                    photo=io.BytesIO(image_data),
+                    caption=f"🎨 Сгенерировано на основе вашего фото\n📝 Промпт: {prompt}\n\n💎 Потрачено: {GENERATION_COST} рубина"
+                )
+                
+                new_rubies = await db.get_user_rubies(user.id)
+                await update.message.reply_text(f"💎 Остаток рубинов: {new_rubies}")
+            else:
+                await status_message.edit_text("❌ Ошибка при списании рубинов")
+        else:
+            await status_message.edit_text("❌ Не удалось обработать изображение. Попробуйте еще раз.")
+    
+    except Exception as e:
+        logger.error(f"Error in process_image_generation: {e}")
+        await status_message.edit_text("❌ Произошла ошибка при генерации изображения. Попробуйте позже.")
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик текстовых сообщений для генерации изображений и покупки рубинов"""
     user = update.effective_user
     text = update.message.text
+    
+    # Проверяем, не ожидаем ли мы промпт для изображения
+    if context.user_data.get('waiting_for_image_prompt'):
+        context.user_data['waiting_for_image_prompt'] = False
+        input_image = context.user_data.get('input_image')
+        
+        if input_image:
+            await process_image_generation(update, context, text, input_image)
+            # Очищаем сохраненное изображение
+            context.user_data.pop('input_image', None)
+        else:
+            await update.message.reply_text("❌ Изображение не найдено. Пожалуйста, загрузите фото заново.")
+        return
     
     # Проверяем, не ожидаем ли мы ввод отзыва
     if context.user_data.get('waiting_for_feedback'):
@@ -355,28 +490,29 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Логируем покупку рубинов
             interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: buy_rubies | COUNT: {rubies_count} | AMOUNT: {amount:.2f} руб.")
             
-            # Создаем платеж в ЮКассе
-            payment_info = yookassa.create_payment(
-                amount=amount,
-                user_id=user.id,
-                rubies=rubies_count
-            )
-            
-            # Сохраняем платеж в БД
-            await db.create_payment(
-                payment_id=payment_info["payment_id"],
-                user_id=user.id,
-                amount=amount,
-                rubies=rubies_count
-            )
-            
-            keyboard = [
-                [InlineKeyboardButton("💳 Оплатить", url=payment_info["confirmation_url"])],
-                [InlineKeyboardButton("✅ Проверить оплату", callback_data=f"check_{payment_info['payment_id']}")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            payment_text = f"""
+            try:
+                # Создаем платеж в ЮКассе
+                payment_info = yookassa.create_payment(
+                    amount=amount,
+                    user_id=user.id,
+                    rubies=rubies_count
+                )
+                
+                # Сохраняем платеж в БД
+                await db.create_payment(
+                    payment_id=payment_info["payment_id"],
+                    user_id=user.id,
+                    amount=amount,
+                    rubies=rubies_count
+                )
+                
+                keyboard = [
+                    [InlineKeyboardButton("💳 Оплатить", url=payment_info["confirmation_url"])],
+                    [InlineKeyboardButton("✅ Проверить оплату", callback_data=f"check_{payment_info['payment_id']}")]
+                ]
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                payment_text = f"""
 💳 Создан платеж
 
 Количество рубинов: {rubies_count} 💎
@@ -386,7 +522,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Нажмите кнопку "Оплатить" для перехода к оплате через СБП.
 После оплаты нажмите "Проверить оплату".
 """
-            await update.message.reply_text(payment_text, reply_markup=reply_markup)
+                await update.message.reply_text(payment_text, reply_markup=reply_markup)
+            except Exception as e:
+                logger.error(f"Ошибка при создании платежа: {e}", exc_info=True)
+                await update.message.reply_text(
+                    "❌ Произошла ошибка при создании платежа. "
+                    "Пожалуйста, попробуйте позже или обратитесь к администратору."
+                )
             return
             
         except ValueError:
@@ -494,6 +636,13 @@ def main():
         logger.error("TELEGRAM_BOT_TOKEN не установлен!")
         return
     
+    # Проверка наличия учетных данных YooKassa
+    from config import YOOKASSA_SHOP_ID, YOOKASSA_SECRET_KEY
+    if not YOOKASSA_SHOP_ID or not YOOKASSA_SECRET_KEY:
+        logger.error("YOOKASSA_SHOP_ID и YOOKASSA_SECRET_KEY должны быть установлены в .env файле!")
+        logger.error("Без этих данных функция покупки рубинов работать не будет.")
+        # Не прерываем запуск, так как бот может работать без покупок
+    
     # Создаем приложение
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).post_init(post_init).build()
     
@@ -506,6 +655,7 @@ def main():
     application.add_handler(CommandHandler("feedback", feedback_command))
     application.add_handler(CallbackQueryHandler(buy_callback, pattern="^buy_"))
     application.add_handler(CallbackQueryHandler(check_payment_callback, pattern="^check_"))
+    application.add_handler(MessageHandler(filters.PHOTO, handle_photo))  # Обработчик фотографий
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_error_handler(error_handler)
     
