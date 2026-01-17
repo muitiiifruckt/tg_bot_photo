@@ -71,8 +71,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /generate - Сгенерировать изображение
 /profile - Мой профиль
 /buy - Купить рубины
+/send - Отправить рубины другу
 /feedback - Отправить совет для улучшения
 /help - Помощь
+
+🎨 Генерируй изображения двумя способами:
+• Отправь текстовое описание
+• Загрузи фото для модификации
 """
     await update.message.reply_text(welcome_text)
 
@@ -88,6 +93,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /generate - Сгенерировать изображение по вашему описанию
 /profile - Посмотреть свой профиль и баланс рубинов
 /buy - Купить рубины для генерации изображений
+/send - Отправить рубины другому пользователю
 /feedback - Отправить совет для улучшения бота
 /help - Показать эту справку
 
@@ -98,6 +104,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 1. Отправьте текстовое описание - бот создаст изображение с нуля
 2. Отправьте фото - бот попросит описание для модификации
 3. Отправьте фото с подписью - бот сразу начнет генерацию
+
+💸 Перевод рубинов:
+/send @username 10 - отправить 10 рубинов пользователю
 
 Примеры: "Красивый закат", "Кот в космосе" или загрузите фото с подписью "В стиле аниме"
 """
@@ -115,6 +124,22 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         first_name=user.first_name
     )
     
+    # Получаем историю переводов
+    transfers = await db.get_transfer_history(user.id, limit=5)
+    
+    transfer_text = ""
+    if transfers:
+        transfer_text = "\n\n📊 Последние переводы:\n"
+        for t in transfers:
+            if t['from_user_id'] == user.id:
+                # Исходящий перевод
+                to_name = f"@{t['to_username']}" if t['to_username'] else t['to_first_name']
+                transfer_text += f"➡️ {to_name}: -{t['amount']} 💎\n"
+            else:
+                # Входящий перевод
+                from_name = f"@{t['from_username']}" if t['from_username'] else t['from_first_name']
+                transfer_text += f"⬅️ {from_name}: +{t['amount']} 💎\n"
+    
     profile_text = f"""
 👤 Профиль пользователя
 
@@ -123,8 +148,102 @@ Username: @{user_data['username'] or 'не указан'}
 💎 Рубины: {user_data['rubies']}
 
 Используйте /buy для пополнения баланса
+Используйте /send для отправки рубинов{transfer_text}
 """
     await update.message.reply_text(profile_text)
+
+
+async def send_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /send - отправка рубинов другому пользователю"""
+    user = update.effective_user
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | COMMAND: /send")
+    
+    # Проверяем аргументы команды
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text(
+            "💸 Отправка рубинов\n\n"
+            "Использование: /send @username количество\n\n"
+            "Примеры:\n"
+            "• /send @friend 10\n"
+            "• /send friend 5\n\n"
+            "Минимальная сумма перевода: 1 рубин"
+        )
+        return
+    
+    recipient_username = context.args[0].lstrip('@')
+    
+    try:
+        amount = int(context.args[1])
+    except ValueError:
+        await update.message.reply_text("❌ Неверное количество рубинов. Укажите число.")
+        return
+    
+    if amount <= 0:
+        await update.message.reply_text("❌ Количество рубинов должно быть больше 0")
+        return
+    
+    # Проверяем баланс отправителя
+    sender_balance = await db.get_user_rubies(user.id)
+    
+    if sender_balance < amount:
+        await update.message.reply_text(
+            f"❌ Недостаточно рубинов!\n\n"
+            f"Ваш баланс: {sender_balance} 💎\n"
+            f"Требуется: {amount} 💎\n\n"
+            f"Используйте /buy для пополнения баланса."
+        )
+        return
+    
+    # Ищем получателя по username
+    recipient = await db.get_user_by_username(recipient_username)
+    
+    if not recipient:
+        await update.message.reply_text(
+            f"❌ Пользователь @{recipient_username} не найден.\n\n"
+            f"Убедитесь, что:\n"
+            f"• Никнейм указан правильно\n"
+            f"• Пользователь уже запускал этого бота (/start)"
+        )
+        return
+    
+    # Проверяем, что не отправляем сами себе
+    if recipient['user_id'] == user.id:
+        await update.message.reply_text("❌ Нельзя отправить рубины самому себе!")
+        return
+    
+    # Выполняем перевод
+    success = await db.transfer_rubies(user.id, recipient['user_id'], amount)
+    
+    if success:
+        new_balance = await db.get_user_rubies(user.id)
+        recipient_name = f"@{recipient['username']}" if recipient['username'] else recipient['first_name']
+        
+        interaction_logger.info(
+            f"USER: @{user.username or 'не указан'} (ID: {user.id}) | "
+            f"ACTION: transfer_rubies | TO: @{recipient['username']} (ID: {recipient['user_id']}) | "
+            f"AMOUNT: {amount}"
+        )
+        
+        await update.message.reply_text(
+            f"✅ Перевод выполнен!\n\n"
+            f"Отправлено {recipient_name}: {amount} 💎\n"
+            f"Ваш новый баланс: {new_balance} 💎"
+        )
+        
+        # Уведомляем получателя (если возможно)
+        try:
+            sender_name = f"@{user.username}" if user.username else user.first_name
+            await context.bot.send_message(
+                chat_id=recipient['user_id'],
+                text=f"🎁 Вы получили перевод!\n\n"
+                     f"От: {sender_name}\n"
+                     f"Сумма: {amount} 💎\n\n"
+                     f"Ваш новый баланс: {recipient['rubies'] + amount} 💎"
+            )
+        except Exception as e:
+            logger.error(f"Не удалось отправить уведомление получателю: {e}")
+    else:
+        await update.message.reply_text("❌ Ошибка при выполнении перевода. Попробуйте позже.")
 
 
 async def buy_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -651,6 +770,7 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("profile", profile))
     application.add_handler(CommandHandler("buy", buy_rubies))
+    application.add_handler(CommandHandler("send", send_rubies))
     application.add_handler(CommandHandler("generate", generate_command))
     application.add_handler(CommandHandler("feedback", feedback_command))
     application.add_handler(CallbackQueryHandler(buy_callback, pattern="^buy_"))

@@ -52,6 +52,18 @@ class Database:
                 )
             """)
             
+            await db.execute("""
+                CREATE TABLE IF NOT EXISTS transfers (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    from_user_id INTEGER,
+                    to_user_id INTEGER,
+                    amount INTEGER,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (from_user_id) REFERENCES users (user_id),
+                    FOREIGN KEY (to_user_id) REFERENCES users (user_id)
+                )
+            """)
+            
             await db.commit()
 
     async def get_or_create_user(self, user_id: int, username: str = None, first_name: str = None):
@@ -162,3 +174,88 @@ class Database:
                 (user_id, prompt, cost)
             )
             await db.commit()
+
+    async def get_user_by_username(self, username: str):
+        """Получить пользователя по username"""
+        async with aiosqlite.connect(self.db_path) as db:
+            # Убираем @ если есть
+            username = username.lstrip('@')
+            cursor = await db.execute(
+                "SELECT user_id, username, first_name, rubies FROM users WHERE username = ? COLLATE NOCASE",
+                (username,)
+            )
+            result = await cursor.fetchone()
+            if result:
+                return {
+                    "user_id": result[0],
+                    "username": result[1],
+                    "first_name": result[2],
+                    "rubies": result[3]
+                }
+            return None
+
+    async def transfer_rubies(self, from_user_id: int, to_user_id: int, amount: int) -> bool:
+        """Перевести рубины от одного пользователя другому"""
+        async with aiosqlite.connect(self.db_path) as db:
+            # Проверяем баланс отправителя
+            cursor = await db.execute(
+                "SELECT rubies FROM users WHERE user_id = ?",
+                (from_user_id,)
+            )
+            result = await cursor.fetchone()
+            from_balance = result[0] if result else 0
+            
+            if from_balance < amount:
+                return False
+            
+            # Списываем у отправителя
+            await db.execute(
+                "UPDATE users SET rubies = rubies - ? WHERE user_id = ?",
+                (amount, from_user_id)
+            )
+            
+            # Начисляем получателю
+            await db.execute(
+                "UPDATE users SET rubies = rubies + ? WHERE user_id = ?",
+                (amount, to_user_id)
+            )
+            
+            # Логируем перевод
+            await db.execute(
+                "INSERT INTO transfers (from_user_id, to_user_id, amount) VALUES (?, ?, ?)",
+                (from_user_id, to_user_id, amount)
+            )
+            
+            await db.commit()
+            return True
+
+    async def get_transfer_history(self, user_id: int, limit: int = 10):
+        """Получить историю переводов пользователя"""
+        async with aiosqlite.connect(self.db_path) as db:
+            cursor = await db.execute("""
+                SELECT t.id, t.from_user_id, t.to_user_id, t.amount, t.created_at,
+                       u1.username as from_username, u1.first_name as from_first_name,
+                       u2.username as to_username, u2.first_name as to_first_name
+                FROM transfers t
+                LEFT JOIN users u1 ON t.from_user_id = u1.user_id
+                LEFT JOIN users u2 ON t.to_user_id = u2.user_id
+                WHERE t.from_user_id = ? OR t.to_user_id = ?
+                ORDER BY t.created_at DESC
+                LIMIT ?
+            """, (user_id, user_id, limit))
+            
+            results = await cursor.fetchall()
+            transfers = []
+            for row in results:
+                transfers.append({
+                    "id": row[0],
+                    "from_user_id": row[1],
+                    "to_user_id": row[2],
+                    "amount": row[3],
+                    "created_at": row[4],
+                    "from_username": row[5],
+                    "from_first_name": row[6],
+                    "to_username": row[7],
+                    "to_first_name": row[8]
+                })
+            return transfers
