@@ -6,12 +6,13 @@ import json
 import os
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 from config import TELEGRAM_BOT_TOKEN, RUBY_PRICE
 from database import Database
 from openrouter_client import OpenRouterClient
 from yookassa_payment import YooKassaPayment
+from models_manager import ModelsManager
 
 # Настройка логирования
 logging.basicConfig(
@@ -45,6 +46,35 @@ interaction_logger.addHandler(file_handler)
 db = Database()
 openrouter = OpenRouterClient()
 yookassa = YooKassaPayment()
+models_manager = ModelsManager()
+
+# Буфер для хранения медиа-групп (несколько фото в одном сообщении)
+media_groups = {}
+
+
+def get_user_selected_model(context: ContextTypes.DEFAULT_TYPE):
+    """Получить выбранную пользователем модель или модель по умолчанию"""
+    selected_model_name = context.user_data.get('selected_model')
+    
+    if selected_model_name:
+        model = models_manager.get_model_by_name(selected_model_name)
+        if model:
+            return model
+    
+    # Если модель не выбрана или не найдена, возвращаем дефолтную
+    return models_manager.get_default_model()
+
+
+# Главное меню с кнопками
+def get_main_menu_keyboard():
+    """Создает главное меню с кнопками"""
+    keyboard = [
+        [KeyboardButton("🎨 Генерация"), KeyboardButton("🤖 Модели")],
+        [KeyboardButton("👤 Профиль"), KeyboardButton("💎 Купить рубины")],
+        [KeyboardButton("💸 Отправить рубины"), KeyboardButton("💡 Отзыв")],
+        [KeyboardButton("❓ Помощь")]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -69,6 +99,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Используй команды:
 /generate - Сгенерировать изображение
+/models - Доступные модели
 /profile - Мой профиль
 /buy - Купить рубины
 /send - Отправить рубины другу
@@ -79,7 +110,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 • Отправь текстовое описание
 • Загрузи фото для модификации
 """
-    await update.message.reply_text(welcome_text)
+    await update.message.reply_text(welcome_text, reply_markup=get_main_menu_keyboard())
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -91,14 +122,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 📖 Справка по боту:
 
 /generate - Сгенерировать изображение по вашему описанию
+/models - Посмотреть доступные модели и цены
 /profile - Посмотреть свой профиль и баланс рубинов
 /buy - Купить рубины для генерации изображений
 /send - Отправить рубины другому пользователю
 /feedback - Отправить совет для улучшения бота
 /help - Показать эту справку
 
-💎 Генерация изображения стоит 2 рубина
-💎 1 рубин = 5 рублей
+💎 Стоимость генерации зависит от модели
+💎 1 рубин = 1 рубль
 
 🎨 Способы генерации:
 1. Отправьте текстовое описание - бот создаст изображение с нуля
@@ -110,7 +142,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Примеры: "Красивый закат", "Кот в космосе" или загрузите фото с подписью "В стиле аниме"
 """
-    await update.message.reply_text(help_text)
+    await update.message.reply_text(help_text, reply_markup=get_main_menu_keyboard())
 
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -147,10 +179,8 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Username: @{user_data['username'] or 'не указан'}
 💎 Рубины: {user_data['rubies']}
 
-Используйте /buy для пополнения баланса
-Используйте /send для отправки рубинов{transfer_text}
 """
-    await update.message.reply_text(profile_text)
+    await update.message.reply_text(profile_text, reply_markup=get_main_menu_keyboard())
 
 
 async def send_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -190,7 +220,6 @@ async def send_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Недостаточно рубинов!\n\n"
             f"Ваш баланс: {sender_balance} 💎\n"
             f"Требуется: {amount} 💎\n\n"
-            f"Используйте /buy для пополнения баланса."
         )
         return
     
@@ -254,7 +283,7 @@ async def buy_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = f"""
 💎 Пополнение баланса рубинов
 
-Цена: 1 рубин = {int(RUBY_PRICE)} рублей
+Цена: 1 рубин = {int(RUBY_PRICE)} рубль
 
 Введите количество рубинов, которое хотите купить (например: 10, 50, 100)
 
@@ -262,14 +291,14 @@ async def buy_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
     
     keyboard = [
-        [InlineKeyboardButton(f"💎 10 рубинов - {int(RUBY_PRICE * 10)} руб.", callback_data="buy_10")],
-        [InlineKeyboardButton(f"💎 50 рубинов - {int(RUBY_PRICE * 50)} руб.", callback_data="buy_50")],
-        [InlineKeyboardButton(f"💎 100 рубинов - {int(RUBY_PRICE * 100)} руб.", callback_data="buy_100")],
-        [InlineKeyboardButton(f"💎 200 рубинов - {int(RUBY_PRICE * 200)} руб.", callback_data="buy_200")],
+        [InlineKeyboardButton(f"💎 10 рубинов - 10 руб.", callback_data="buy_10")],
+        [InlineKeyboardButton(f"💎 50 рубинов - 50 руб.", callback_data="buy_50")],
+        [InlineKeyboardButton(f"💎 100 рубинов - 100 руб.", callback_data="buy_100")],
+        [InlineKeyboardButton(f"💎 200 рубинов - 200 руб.", callback_data="buy_200")],
     ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    inline_keyboard = InlineKeyboardMarkup(keyboard)
     
-    await update.message.reply_text(text, reply_markup=reply_markup)
+    await update.message.reply_text(text, reply_markup=inline_keyboard)
     
     # Устанавливаем состояние ожидания ввода количества рубинов
     context.user_data['waiting_for_rubies'] = True
@@ -295,7 +324,7 @@ async def buy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("❌ Количество рубинов должно быть больше 0")
         return
     
-    # Рассчитываем цену: 1 рубин = 5 рублей
+    # Рассчитываем цену: 1 рубин = 1 рубль
     amount = rubies_count * RUBY_PRICE
     
     try:
@@ -325,7 +354,7 @@ async def buy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Количество рубинов: {rubies_count} 💎
 Сумма: {amount:.2f} ₽
-(1 рубин = {int(RUBY_PRICE)} рублей)
+(1 рубин = {int(RUBY_PRICE)} рубль)
 
 Нажмите кнопку "Оплатить" для перехода к оплате через СБП.
 После оплаты нажмите "Проверить оплату".
@@ -382,14 +411,18 @@ async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | COMMAND: /generate")
     
-    text = """
+    # Получаем информацию о текущей модели
+    default_model = models_manager.get_default_model()
+    model_info = ""
+    if default_model:
+        model_info = f"\n🤖 Модель: {default_model['display_name']}\n💎 Цена: {default_model['price_rubies']} рубин{'ов' if default_model['price_rubies'] > 1 else ''}\n"
+    
+    text = f"""
 🎨 Генерация изображения
 
 Отправьте описание изображения, которое вы хотите сгенерировать.
 Или отправьте фото + описание для генерации на основе изображения.
-
-💎 Стоимость: 2 рубина за генерацию
-
+{model_info}
 Примеры текстовых промптов:
 • "Красивый закат над горами"
 • "Кот в космосе"
@@ -398,8 +431,73 @@ async def generate_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Для генерации на основе фото:
 1. Отправьте фото
 2. Отправьте описание того, как изменить изображение
+
 """
-    await update.message.reply_text(text)
+    await update.message.reply_text(text, reply_markup=get_main_menu_keyboard())
+
+
+async def models_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик команды /models - показать доступные модели с кнопками выбора"""
+    user = update.effective_user
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | COMMAND: /models")
+    
+    # Получаем текущую выбранную модель
+    current_model = context.user_data.get('selected_model')
+    if not current_model:
+        default = models_manager.get_default_model()
+        current_model = default['openrouter_name'] if default else None
+    
+    # Формируем текст и кнопки
+    models_text = "🤖 Доступные модели:\n\n"
+    keyboard = []
+    
+    for model in models_manager.get_enabled_models():
+        is_current = model['openrouter_name'] == current_model
+        icon = "✅" if is_current else "⚪"
+        
+        models_text += f"{icon} **{model['display_name']}**\n"
+        models_text += f"   {model['description']}\n"
+        models_text += f"   💎 Цена: {model['price_rubies']} рубин{'ов' if model['price_rubies'] > 1 else ''}\n\n"
+        
+        # Добавляем кнопку выбора
+        button_text = f"{'✅' if is_current else '⚪'} {model['display_name']} - {model['price_rubies']} 💎"
+        keyboard.append([
+            InlineKeyboardButton(
+                button_text,
+                callback_data=f"select_model_{model['openrouter_name']}"
+            )
+        ])
+    
+    models_text += "\n👆 Нажмите на модель, чтобы выбрать её для генерации"
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(models_text, reply_markup=reply_markup, parse_mode='Markdown')
+
+
+async def select_model_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Обработчик выбора модели"""
+    query = update.callback_query
+    await query.answer()
+    
+    user = update.effective_user
+    model_name = query.data.replace("select_model_", "")
+    model = models_manager.get_model_by_name(model_name)
+    
+    if model:
+        # Сохраняем выбранную модель
+        context.user_data['selected_model'] = model_name
+        
+        interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: select_model | MODEL: {model['display_name']}")
+        
+        await query.edit_message_text(
+            f"✅ Выбрана модель: **{model['display_name']}**\n\n"
+            f"📝 {model['description']}\n\n"
+            f"💎 Цена генерации: {model['price_rubies']} рубин{'ов' if model['price_rubies'] > 1 else ''}\n\n"
+            f"Теперь все ваши генерации будут использовать эту модель.",
+            parse_mode='Markdown'
+        )
+    else:
+        await query.edit_message_text("❌ Модель не найдена")
 
 
 async def save_feedback_to_jsonl(username: str, text: str, user_id: int):
@@ -443,18 +541,22 @@ async def feedback_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик фотографий для генерации на основе изображения"""
     user = update.effective_user
+    media_group_id = update.message.media_group_id
+    
+    # Получаем цену генерации из выбранной модели
+    selected_model = get_user_selected_model(context)
+    GENERATION_COST = selected_model['price_rubies'] if selected_model else 2
     
     # Проверяем баланс
     rubies = await db.get_user_rubies(user.id)
-    GENERATION_COST = 2
     
     if rubies < GENERATION_COST:
         interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: photo_upload | STATUS: insufficient_balance")
         await update.message.reply_text(
             f"❌ Недостаточно рубинов для генерации!\n\n"
             f"Текущий баланс: {rubies} 💎\n"
-            f"Требуется: {GENERATION_COST} 💎\n\n"
-            f"Используйте /buy для пополнения баланса."
+            f"Требуется: {GENERATION_COST} 💎\n\n",
+            reply_markup=get_main_menu_keyboard()
         )
         return
     
@@ -465,40 +567,105 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Скачиваем фото в байты
     photo_bytes = await photo_file.download_as_bytearray()
     
-    # Сохраняем фото в контексте пользователя
-    context.user_data['input_image'] = bytes(photo_bytes)
-    context.user_data['waiting_for_image_prompt'] = True
-    
-    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: photo_uploaded")
-    
     caption = update.message.caption if update.message.caption else None
     
+    # Проверяем, является ли это частью медиа-группы (несколько фото)
+    if media_group_id:
+        # Это часть альбома - собираем все фото
+        if media_group_id not in media_groups:
+            media_groups[media_group_id] = {
+                'photos': [],
+                'caption': caption,
+                'user_id': user.id,
+                'update': update,
+                'context': context
+            }
+        
+        media_groups[media_group_id]['photos'].append(bytes(photo_bytes))
+        
+        # Устанавливаем таймер для обработки группы (ждем 2 секунды после последнего фото)
+        if 'timer' in media_groups[media_group_id]:
+            media_groups[media_group_id]['timer'].cancel()
+        
+        async def process_media_group():
+            await asyncio.sleep(2)  # Ждем 2 секунды для сбора всех фото
+            if media_group_id in media_groups:
+                group_data = media_groups.pop(media_group_id)
+                await handle_media_group(group_data)
+        
+        task = asyncio.create_task(process_media_group())
+        media_groups[media_group_id]['timer'] = task
+        
+    else:
+        # Одно фото - обрабатываем как раньше
+        context.user_data['input_image'] = bytes(photo_bytes)
+        context.user_data['waiting_for_image_prompt'] = True
+        
+        interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: photo_uploaded")
+        
+        if caption:
+            # Если есть подпись к фото, используем её как промпт
+            context.user_data['waiting_for_image_prompt'] = False
+            await process_image_generation(update, context, caption, bytes(photo_bytes))
+        else:
+            # Запрашиваем промпт
+            await update.message.reply_text(
+                "📸 Фото получено! Теперь отправьте описание того, как вы хотите изменить это изображение.\n\n"
+                "Примеры:\n"
+                "• 'Сделай это в стиле аниме'\n"
+                "• 'Преврати это в картину маслом'\n"
+                "• 'Добавь фантастические элементы'",
+                reply_markup=get_main_menu_keyboard()
+            )
+
+
+async def handle_media_group(group_data):
+    """Обработка группы фото (альбома)"""
+    photos = group_data['photos']
+    caption = group_data['caption']
+    user_id = group_data['user_id']
+    update = group_data['update']
+    context = group_data['context']
+    user = update.effective_user
+    
+    # Сохраняем все фото в контексте
+    context.user_data['input_images'] = photos
+    context.user_data['waiting_for_images_prompt'] = True
+    
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user_id}) | ACTION: media_group_uploaded | COUNT: {len(photos)}")
+    
     if caption:
-        # Если есть подпись к фото, используем её как промпт
-        context.user_data['waiting_for_image_prompt'] = False
-        await process_image_generation(update, context, caption, photo_bytes)
+        # Если есть подпись, используем её как промпт
+        context.user_data['waiting_for_images_prompt'] = False
+        await process_images_generation(update, context, caption, photos)
     else:
         # Запрашиваем промпт
         await update.message.reply_text(
-            "📸 Фото получено! Теперь отправьте описание того, как вы хотите изменить это изображение.\n\n"
-            "Примеры:\n"
-            "• 'Сделай это в стиле аниме'\n"
-            "• 'Преврати это в картину маслом'\n"
-            "• 'Добавь фантастические элементы'"
+            f"📸 Получено {len(photos)} фото! Теперь отправьте описание того, что вы хотите сделать.\n\n"
+            f"Примеры:\n"
+            f"• 'Объедини стили этих фото'\n"
+            f"• 'Сделай с 1 фото такой же стиль как на 2'\n"
+            f"• 'Создай коллаж из этих изображений'",
+            reply_markup=get_main_menu_keyboard()
         )
 
 
-async def process_image_generation(update: Update, context: ContextTypes.DEFAULT_TYPE, prompt: str, input_image: bytes):
-    """Обработка генерации изображения на основе входного"""
+async def process_images_generation(update: Update, context: ContextTypes.DEFAULT_TYPE, prompt: str, input_images: list):
+    """Обработка генерации изображения на основе нескольких входных изображений"""
     user = update.effective_user
     
-    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: generate_from_image | PROMPT: {prompt[:100]}...")
+    # Получаем цену генерации из выбранной модели
+    selected_model = get_user_selected_model(context)
+    GENERATION_COST = selected_model['price_rubies'] if selected_model else 2
+    model_name = selected_model['display_name'] if selected_model else "Unknown"
     
-    status_message = await update.message.reply_text("⏳ Генерирую изображение на основе вашего фото... Это может занять некоторое время.")
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: generate_from_images | COUNT: {len(input_images)} | PROMPT: {prompt[:100]}...")
+    
+    status_message = await update.message.reply_text(f"⏳ Генерирую изображение на основе {len(input_images)} фото... Это может занять некоторое время.")
     
     try:
-        # Генерируем изображение
-        image_url = await openrouter.generate_image(prompt, input_image=input_image)
+        # Генерируем изображение на основе нескольких фото
+        image_url = await openrouter.generate_image(prompt, input_images=input_images, model=selected_model['openrouter_name'])
         
         if not image_url:
             await status_message.edit_text("❌ Ошибка при генерации изображения. Попробуйте еще раз.")
@@ -520,7 +687,68 @@ async def process_image_generation(update: Update, context: ContextTypes.DEFAULT
         
         if image_data:
             # Списываем рубины
-            GENERATION_COST = 2
+            success = await db.deduct_rubies(user.id, GENERATION_COST)
+            
+            if success:
+                await db.log_generation(user.id, f"[Multi-Image] {prompt}", GENERATION_COST)
+                interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: image_generated_from_photos | COST: {GENERATION_COST} rubies | SUCCESS")
+                
+                await status_message.delete()
+                await update.message.reply_photo(
+                    photo=io.BytesIO(image_data),
+                    caption=f"🎨 Сгенерировано на основе {len(input_images)} фото\n📝 Промпт: {prompt}\n\n💎 Потрачено: {GENERATION_COST} рубин{'ов' if GENERATION_COST > 1 else ''}",
+                    reply_markup=get_main_menu_keyboard()
+                )
+                
+                new_rubies = await db.get_user_rubies(user.id)
+                await update.message.reply_text(f"💎 Остаток рубинов: {new_rubies}", reply_markup=get_main_menu_keyboard())
+            else:
+                await status_message.edit_text("❌ Ошибка при списании рубинов")
+        else:
+            await status_message.edit_text("❌ Не удалось обработать изображение. Попробуйте еще раз.")
+    
+    except Exception as e:
+        logger.error(f"Error in process_images_generation: {e}")
+        await status_message.edit_text("❌ Произошла ошибка при генерации изображения. Попробуйте позже.")
+
+
+async def process_image_generation(update: Update, context: ContextTypes.DEFAULT_TYPE, prompt: str, input_image: bytes):
+    """Обработка генерации изображения на основе входного"""
+    user = update.effective_user
+    
+    # Получаем цену генерации из выбранной модели
+    selected_model = get_user_selected_model(context)
+    GENERATION_COST = selected_model['price_rubies'] if selected_model else 2
+    model_name = selected_model['display_name'] if selected_model else "Unknown"
+    
+    interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: generate_from_image | PROMPT: {prompt[:100]}...")
+    
+    status_message = await update.message.reply_text("⏳ Генерирую изображение на основе вашего фото... Это может занять некоторое время.")
+    
+    try:
+        # Генерируем изображение
+        image_url = await openrouter.generate_image(prompt, input_image=input_image, model=selected_model['openrouter_name'])
+        
+        if not image_url:
+            await status_message.edit_text("❌ Ошибка при генерации изображения. Попробуйте еще раз.")
+            return
+        
+        # Обрабатываем изображение
+        image_data = None
+        
+        if image_url.startswith("data:image"):
+            image_data = openrouter.decode_base64_image(image_url)
+        elif image_url.startswith("http"):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(image_url) as resp:
+                        if resp.status == 200:
+                            image_data = await resp.read()
+            except Exception as e:
+                logger.error(f"Error downloading image: {e}")
+        
+        if image_data:
+            # Списываем рубины
             success = await db.deduct_rubies(user.id, GENERATION_COST)
             
             if success:
@@ -550,7 +778,50 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     text = update.message.text
     
-    # Проверяем, не ожидаем ли мы промпт для изображения
+    # Обработка кнопок главного меню
+    if text == "🎨 Генерация":
+        await generate_command(update, context)
+        return
+    elif text == "🤖 Модели":
+        await models_command(update, context)
+        return
+    elif text == "👤 Профиль":
+        await profile(update, context)
+        return
+    elif text == "💎 Купить рубины":
+        await buy_rubies(update, context)
+        return
+    elif text == "💸 Отправить рубины":
+        await update.message.reply_text(
+            "💸 Отправка рубинов\n\n"
+            "Использование: /send @username количество\n\n"
+            "Примеры:\n"
+            "• /send @friend 10\n"
+            "• /send friend 5",
+            reply_markup=get_main_menu_keyboard()
+        )
+        return
+    elif text == "💡 Отзыв":
+        await feedback_command(update, context)
+        return
+    elif text == "❓ Помощь":
+        await help_command(update, context)
+        return
+    
+    # Проверяем, не ожидаем ли мы промпт для нескольких изображений
+    if context.user_data.get('waiting_for_images_prompt'):
+        context.user_data['waiting_for_images_prompt'] = False
+        input_images = context.user_data.get('input_images')
+        
+        if input_images:
+            await process_images_generation(update, context, text, input_images)
+            # Очищаем сохраненные изображения
+            context.user_data.pop('input_images', None)
+        else:
+            await update.message.reply_text("❌ Изображения не найдены. Пожалуйста, загрузите фото заново.", reply_markup=get_main_menu_keyboard())
+        return
+    
+    # Проверяем, не ожидаем ли мы промпт для одного изображения
     if context.user_data.get('waiting_for_image_prompt'):
         context.user_data['waiting_for_image_prompt'] = False
         input_image = context.user_data.get('input_image')
@@ -560,7 +831,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # Очищаем сохраненное изображение
             context.user_data.pop('input_image', None)
         else:
-            await update.message.reply_text("❌ Изображение не найдено. Пожалуйста, загрузите фото заново.")
+            await update.message.reply_text("❌ Изображение не найдено. Пожалуйста, загрузите фото заново.", reply_markup=get_main_menu_keyboard())
         return
     
     # Проверяем, не ожидаем ли мы ввод отзыва
@@ -603,7 +874,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text("❌ Максимальное количество рубинов за раз: 10000")
                 return
             
-            # Рассчитываем цену: 1 рубин = 5 рублей
+            # Рассчитываем цену: 1 рубин = 1 рубль
             amount = rubies_count * RUBY_PRICE
             
             # Логируем покупку рубинов
@@ -636,7 +907,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 Количество рубинов: {rubies_count} 💎
 Сумма: {amount:.2f} ₽
-(1 рубин = {int(RUBY_PRICE)} рублей)
+(1 рубин = {int(RUBY_PRICE)} рубль)
 
 Нажмите кнопку "Оплатить" для перехода к оплате через СБП.
 После оплаты нажмите "Проверить оплату".
@@ -662,9 +933,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Логируем запрос на генерацию
     interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: generate_image | PROMPT: {text[:100]}...")
     
-    # Проверяем баланс (генерация стоит 2 рубина)
+    # Получаем цену генерации из выбранной модели
+    selected_model = get_user_selected_model(context)
+    GENERATION_COST = selected_model['price_rubies'] if selected_model else 2
+    model_name = selected_model['display_name'] if selected_model else "Unknown"
+    
+    # Проверяем баланс
     rubies = await db.get_user_rubies(user.id)
-    GENERATION_COST = 2  # 2 рубина за генерацию
     
     if rubies < GENERATION_COST:
         interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: generate_image | STATUS: insufficient_balance | RUBIES: {rubies}")
@@ -672,7 +947,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ Недостаточно рубинов!\n\n"
             f"Текущий баланс: {rubies} 💎\n"
             f"Требуется: {GENERATION_COST} 💎\n\n"
-            f"Используйте /buy для пополнения баланса."
         )
         return
     
@@ -681,7 +955,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         # Генерируем изображение
-        image_url = await openrouter.generate_image(prompt)
+        image_url = await openrouter.generate_image(prompt, model=selected_model['openrouter_name'])
         
         if not image_url:
             await status_message.edit_text("❌ Ошибка при генерации изображения. Попробуйте еще раз.")
@@ -704,8 +978,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 logger.error(f"Error downloading image: {e}")
         
         if image_data:
-            # Списываем рубины перед отправкой (2 рубина за генерацию)
-            GENERATION_COST = 2
+            # Списываем рубины перед отправкой
             success = await db.deduct_rubies(user.id, GENERATION_COST)
             
             if success:
@@ -772,9 +1045,11 @@ def main():
     application.add_handler(CommandHandler("buy", buy_rubies))
     application.add_handler(CommandHandler("send", send_rubies))
     application.add_handler(CommandHandler("generate", generate_command))
+    application.add_handler(CommandHandler("models", models_command))
     application.add_handler(CommandHandler("feedback", feedback_command))
     application.add_handler(CallbackQueryHandler(buy_callback, pattern="^buy_"))
     application.add_handler(CallbackQueryHandler(check_payment_callback, pattern="^check_"))
+    application.add_handler(CallbackQueryHandler(select_model_callback, pattern="^select_model_"))
     application.add_handler(MessageHandler(filters.PHOTO, handle_photo))  # Обработчик фотографий
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     application.add_error_handler(error_handler)

@@ -1,0 +1,139 @@
+2026-01-17 10:45:15 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-17 10:45:15 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-17 10:45:21 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-17 10:45:22 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: buy_10
+2026-01-17 10:47:42 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-17 10:47:44 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: buy_10
+2026-01-17 10:53:58 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-17 10:53:59 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: buy_10
+2026-01-17 10:55:00 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: check_payment | PAYMENT_ID: 30fd53d8-000f-5001-9000-1cd364b887a5
+2026-01-17 13:23:27 - USER: @ivanalpat (ID: 1828918634) | COMMAND: /start | NAME: Иван
+2026-01-17 13:23:36 - USER: @ivanalpat (ID: 1828918634) | COMMAND: /generate
+2026-01-17 13:23:45 - USER: @ivanalpat (ID: 1828918634) | ACTION: generate_image | PROMPT: Кот в космосе...
+2026-01-17 13:23:53 - USER: @ivanalpat (ID: 1828918634) | ACTION: image_generated | COST: 2 rubies | SUCCESS
+2026-01-17 13:24:07 - USER: @ivanalpat (ID: 1828918634) | COMMAND: /buy
+2026-01-17 13:24:11 - USER: @ivanalpat (ID: 1828918634) | CALLBACK: buy_10
+2026-01-17 13:24:43 - USER: @ivanalpat (ID: 1828918634) | CALLBACK: check_payment | PAYMENT_ID: 30fd770c-000f-5001-8000-1090f52e43e0
+2026-01-17 13:29:26 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-17 13:29:43 - USER: @mult1fruckt (ID: 1303908054) | ACTION: photo_uploaded
+2026-01-17 13:29:53 - USER: @mult1fruckt (ID: 1303908054) | ACTION: generate_from_image | PROMPT: Сделай это в стиле аниме...
+2026-01-17 13:30:00 - USER: @mult1fruckt (ID: 1303908054) | ACTION: image_generated_from_photo | COST: 2 rubies | SUCCESS
+2026-01-17 13:30:36 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-17 13:30:49 - USER: @mult1fruckt (ID: 1303908054) | ACTION: photo_uploaded
+2026-01-17 13:30:56 - USER: @mult1fruckt (ID: 1303908054) | ACTION: generate_from_image | PROMPT: Добавь фантастические элементы...
+2026-01-17 13:31:05 - USER: @mult1fruckt (ID: 1303908054) | ACTION: image_generated_from_photo | COST: 2 rubies | SUCCESS
+2026-01-17 13:34:43 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-17 13:34:45 - USER: @mult1fruckt (ID: 1303908054) | ACTION: photo_uploaded
+2026-01-17 13:34:52 - USER: @mult1fruckt (ID: 1303908054) | ACTION: generate_from_image | PROMPT: Black Lada Priora, aggressive stance, glossy black paint, lowered suspension, wide wheels, night cit...
+2026-01-17 13:35:02 - USER: @mult1fruckt (ID: 1303908054) | ACTION: image_generated_from_photo | COST: 2 rubies | SUCCESS
+2026-01-17 14:39:55 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /send
+2026-01-17 14:40:42 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /send
+2026-01-17 14:40:42 - USER: @mult1fruckt (ID: 1303908054) | ACTION: transfer_rubies | TO: @aizat_004 (ID: 7543125829) | AMOUNT: 1
+2026-01-17 19:05:23 - USER: @aizat_004 (ID: 7543125829) | COMMAND: /buy
+2026-01-17 19:05:28 - USER: @aizat_004 (ID: 7543125829) | COMMAND: /send
+2026-01-17 19:19:57 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-17 19:19:59 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: buy_10
+2026-01-17 19:20:03 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: check_payment | PAYMENT_ID: 30fdca6f-000f-5001-9000-1fdcc3eea169
+2026-01-17 19:20:07 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-17 19:20:13 - USER: @mult1fruckt (ID: 1303908054) | ACTION: buy_rubies | COUNT: 10000 | AMOUNT: 50000.00 руб.
+2026-01-17 19:20:23 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-17 19:20:27 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /send
+2026-01-20 11:21:38 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:21:38 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-20 11:21:59 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /send
+2026-01-20 11:22:10 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:23:52 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:24:05 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: buy_10
+2026-01-20 11:24:25 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:24:26 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: buy_10
+2026-01-20 11:25:38 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:25:40 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: buy_10
+2026-01-20 11:25:47 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:25:52 - USER: @mult1fruckt (ID: 1303908054) | ACTION: buy_rubies | COUNT: 10000 | AMOUNT: 10000.00 руб.
+2026-01-20 11:26:07 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:26:11 - USER: @mult1fruckt (ID: 1303908054) | ACTION: buy_rubies | COUNT: 5 | AMOUNT: 5.00 руб.
+2026-01-20 11:32:53 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: check_payment | PAYMENT_ID: 31014fe3-000f-5001-9000-1c5e504487bf
+2026-01-20 11:33:20 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:33:22 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 11:38:55 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /help
+2026-01-20 11:38:58 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:00 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:01 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 11:39:01 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:39:03 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-20 11:39:06 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /feedback
+2026-01-20 11:39:08 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /help
+2026-01-20 11:39:11 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 11:39:12 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:13 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-20 11:39:13 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:39:14 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /feedback
+2026-01-20 11:39:15 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /help
+2026-01-20 11:39:15 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /feedback
+2026-01-20 11:39:16 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:39:16 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 11:39:16 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:17 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-20 11:39:17 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /help
+2026-01-20 11:39:17 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /feedback
+2026-01-20 11:39:18 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:39:18 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 11:39:19 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-20 11:39:19 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /help
+2026-01-20 11:39:20 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /feedback
+2026-01-20 11:39:20 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:39:20 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 11:39:20 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:21 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:21 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:21 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:22 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:22 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:22 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:22 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:22 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:22 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:22 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:23 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:39:23 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:51:28 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 11:51:37 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 11:51:39 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: buy_10
+2026-01-20 11:52:28 - USER: @mult1fruckt (ID: 1303908054) | CALLBACK: check_payment | PAYMENT_ID: 310155dc-000f-5001-9000-1499111e3256
+2026-01-20 11:52:46 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:54:16 - USER: @mult1fruckt (ID: 1303908054) | ACTION: photo_uploaded
+2026-01-20 11:54:16 - USER: @mult1fruckt (ID: 1303908054) | ACTION: generate_from_image | PROMPT: сделай с 1 фото такую же фотку как вторая...
+2026-01-20 11:54:25 - USER: @mult1fruckt (ID: 1303908054) | ACTION: image_generated_from_photo | COST: 5 rubies | SUCCESS
+2026-01-20 11:54:27 - USER: @mult1fruckt (ID: 1303908054) | ACTION: photo_uploaded
+2026-01-20 11:59:06 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /help
+2026-01-20 11:59:06 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /feedback
+2026-01-20 11:59:12 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 11:59:42 - USER: @mult1fruckt (ID: 1303908054) | ACTION: media_group_uploaded | COUNT: 2
+2026-01-20 11:59:42 - USER: @mult1fruckt (ID: 1303908054) | ACTION: generate_from_images | COUNT: 2 | PROMPT: сделай такое же тип изображения с первым фото...
+2026-01-20 11:59:56 - USER: @mult1fruckt (ID: 1303908054) | ACTION: image_generated_from_photos | COST: 5 rubies | SUCCESS
+2026-01-20 12:03:40 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 12:03:43 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 12:06:47 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 12:06:50 - USER: @mult1fruckt (ID: 1303908054) | ACTION: select_model | MODEL: Nano banana pro
+2026-01-20 12:06:54 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 12:06:55 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-20 12:06:59 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 12:07:00 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /feedback
+2026-01-20 12:07:01 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 12:07:08 - USER: @mult1fruckt (ID: 1303908054) | ACTION: select_model | MODEL: Nano banana
+2026-01-20 12:07:12 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 12:07:24 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 12:07:26 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-20 12:11:17 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 12:11:22 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 12:11:34 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-20 12:11:49 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /feedback
+2026-01-20 12:11:52 - USER: @mult1fruckt (ID: 1303908054) | FEEDBACK: ываодлырваоывла...
+2026-01-20 12:49:23 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 12:49:28 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-20 12:49:30 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-20 12:49:31 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /profile
+2026-01-20 12:49:31 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /buy
+2026-01-20 12:49:32 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /feedback
+2026-01-20 12:49:33 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /help
+2026-01-20 12:50:49 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models

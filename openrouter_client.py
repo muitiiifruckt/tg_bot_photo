@@ -16,12 +16,31 @@ class OpenRouterClient:
         """Кодирование изображения в base64"""
         return base64.b64encode(image_bytes).decode('utf-8')
 
-    async def generate_image(self, prompt: str, input_image: bytes = None):
-        """Генерация изображения по промпту, опционально на основе входного изображения"""
+    async def generate_image(self, prompt: str, input_image: bytes = None, input_images: list = None, model: str = None):
+        """Генерация изображения по промпту, опционально на основе входного изображения или нескольких изображений"""
+        # Используем указанную модель или модель по умолчанию
+        model_to_use = model if model else self.model
+        
         try:
             # Формируем контент сообщения
-            if input_image:
-                # Если есть входное изображение, формируем multimodal content
+            if input_images:
+                # Если есть несколько входных изображений
+                content = []
+                for img_bytes in input_images:
+                    base64_image = self.encode_image_to_base64(img_bytes)
+                    content.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64_image}"
+                        }
+                    })
+                # Добавляем текстовый промпт
+                content.append({
+                    "type": "text",
+                    "text": prompt
+                })
+            elif input_image:
+                # Если есть одно входное изображение, формируем multimodal content
                 base64_image = self.encode_image_to_base64(input_image)
                 content = [
                     {
@@ -40,7 +59,7 @@ class OpenRouterClient:
                 content = prompt
             
             response = self.client.chat.completions.create(
-                model=self.model,
+                model=model_to_use,
                 messages=[
                     {
                         "role": "user",

@@ -1,0 +1,19 @@
+{
+  "models": [
+    {
+      "openrouter_name": "google/gemini-2.5-flash-image",
+      "display_name": "Nano banana",
+      "description": "Быстрая генерация изображений высокого качества.",
+      "price_rubies": 5,
+      "enabled": true
+    },
+    {
+      "openrouter_name": "google/gemini-3-pro-image-preview",
+      "display_name": "Nano banana pro",
+      "description": "Премиум модель с улучшенным качеством и детализацией.",
+      "price_rubies": 20,
+      "enabled": true
+    }
+  ],
+  "default_model": "google/gemini-2.5-flash-image"
+}
