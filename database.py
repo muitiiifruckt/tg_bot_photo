@@ -76,13 +76,13 @@ class Database:
             user = await cursor.fetchone()
             
             if not user:
-                # Новые пользователи получают 4 рубина при регистрации
+                # Новые пользователи получают 20 рубинов при регистрации
                 await db.execute(
                     "INSERT INTO users (user_id, username, first_name, rubies) VALUES (?, ?, ?, ?)",
-                    (user_id, username, first_name, 4)
+                    (user_id, username, first_name, 20)
                 )
                 await db.commit()
-                return {"user_id": user_id, "username": username, "first_name": first_name, "rubies": 4}
+                return {"user_id": user_id, "username": username, "first_name": first_name, "rubies": 20}
             
             return {
                 "user_id": user[0],
