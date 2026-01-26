@@ -44,3 +44,8 @@ ENV/
 # OS
 .DS_Store
 Thumbs.db
+
+
+logs/
+*.log
+feedback.jsonl
