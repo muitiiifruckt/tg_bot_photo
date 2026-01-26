@@ -187,6 +187,13 @@ async def send_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /send - отправка рубинов другому пользователю"""
     user = update.effective_user
     interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | COMMAND: /send")
+
+    # Гарантируем, что пользователь существует в БД (например, если не нажимал /start)
+    await db.get_or_create_user(
+        user_id=user.id,
+        username=user.username,
+        first_name=user.first_name
+    )
     
     # Проверяем аргументы команды
     if not context.args or len(context.args) < 2:
@@ -245,6 +252,7 @@ async def send_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if success:
         new_balance = await db.get_user_rubies(user.id)
+        recipient_new_balance = await db.get_user_rubies(recipient['user_id'])
         recipient_name = f"@{recipient['username']}" if recipient['username'] else recipient['first_name']
         
         interaction_logger.info(
@@ -267,7 +275,7 @@ async def send_rubies(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 text=f"🎁 Вы получили перевод!\n\n"
                      f"От: {sender_name}\n"
                      f"Сумма: {amount} 💎\n\n"
-                     f"Ваш новый баланс: {recipient['rubies'] + amount} 💎"
+                     f"Ваш новый баланс: {recipient_new_balance} 💎"
             )
         except Exception as e:
             logger.error(f"Не удалось отправить уведомление получателю: {e}")
@@ -312,6 +320,13 @@ async def buy_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
     data = query.data
     interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | CALLBACK: {data}")
+
+    # Гарантируем, что пользователь существует в БД
+    await db.get_or_create_user(
+        user_id=user.id,
+        username=user.username,
+        first_name=user.first_name
+    )
     
     # Извлекаем количество рубинов из callback_data (buy_10, buy_50 и т.д.)
     try:
@@ -376,6 +391,13 @@ async def check_payment_callback(update: Update, context: ContextTypes.DEFAULT_T
     user = update.effective_user
     payment_id = query.data.replace("check_", "")
     interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | CALLBACK: check_payment | PAYMENT_ID: {payment_id}")
+
+    # Гарантируем, что пользователь существует в БД
+    await db.get_or_create_user(
+        user_id=user.id,
+        username=user.username,
+        first_name=user.first_name
+    )
     payment_data = await db.get_payment(payment_id)
     
     if not payment_data:
@@ -542,6 +564,13 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик фотографий для генерации на основе изображения"""
     user = update.effective_user
     media_group_id = update.message.media_group_id
+
+    # Гарантируем, что пользователь существует в БД (например, если не нажимал /start)
+    await db.get_or_create_user(
+        user_id=user.id,
+        username=user.username,
+        first_name=user.first_name
+    )
     
     # Получаем цену генерации из выбранной модели
     selected_model = get_user_selected_model(context)
@@ -785,6 +814,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик текстовых сообщений для генерации изображений и покупки рубинов"""
     user = update.effective_user
     text = update.message.text
+
+    # Гарантируем, что пользователь существует в БД (например, если не нажимал /start)
+    await db.get_or_create_user(
+        user_id=user.id,
+        username=user.username,
+        first_name=user.first_name
+    )
     
     # Обработка кнопок главного меню
     if text == "🎨 Генерация":
