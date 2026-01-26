@@ -468,7 +468,7 @@ async def models_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         ])
     
-    models_text += "\n👆 Нажмите на модель, чтобы выбрать её для генерации"
+    models_text += "👆 Нажмите на модель, чтобы выбрать её для генерации"
     
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text(models_text, reply_markup=reply_markup, parse_mode='Markdown')
@@ -694,9 +694,13 @@ async def process_images_generation(update: Update, context: ContextTypes.DEFAUL
                 interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: image_generated_from_photos | COST: {GENERATION_COST} rubies | SUCCESS")
                 
                 await status_message.delete()
+                
+                # Обрезаем промпт для caption (лимит Telegram - 1024 символа)
+                short_prompt = prompt[:150] + "..." if len(prompt) > 150 else prompt
+                
                 await update.message.reply_photo(
                     photo=io.BytesIO(image_data),
-                    caption=f"🎨 Сгенерировано на основе {len(input_images)} фото\n📝 Промпт: {prompt}\n\n💎 Потрачено: {GENERATION_COST} рубин{'ов' if GENERATION_COST > 1 else ''}",
+                    caption=f"🎨 Сгенерировано на основе {len(input_images)} фото\n📝 Промпт: {short_prompt}\n\n💎 Потрачено: {GENERATION_COST} рубин{'ов' if GENERATION_COST > 1 else ''}",
                     reply_markup=get_main_menu_keyboard()
                 )
                 
@@ -756,9 +760,13 @@ async def process_image_generation(update: Update, context: ContextTypes.DEFAULT
                 interaction_logger.info(f"USER: @{user.username or 'не указан'} (ID: {user.id}) | ACTION: image_generated_from_photo | COST: {GENERATION_COST} rubies | SUCCESS")
                 
                 await status_message.delete()
+                
+                # Обрезаем промпт для caption (лимит Telegram - 1024 символа)
+                short_prompt = prompt[:150] + "..." if len(prompt) > 150 else prompt
+                
                 await update.message.reply_photo(
                     photo=io.BytesIO(image_data),
-                    caption=f"🎨 Сгенерировано на основе вашего фото\n📝 Промпт: {prompt}\n\n💎 Потрачено: {GENERATION_COST} рубина"
+                    caption=f"🎨 Сгенерировано на основе вашего фото\n📝 Промпт: {short_prompt}\n\n💎 Потрачено: {GENERATION_COST} рубина"
                 )
                 
                 new_rubies = await db.get_user_rubies(user.id)
@@ -988,9 +996,13 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 # Отправляем изображение
                 await status_message.delete()
+                
+                # Обрезаем промпт для caption (лимит Telegram - 1024 символа)
+                short_prompt = prompt[:150] + "..." if len(prompt) > 150 else prompt
+                
                 await update.message.reply_photo(
                     photo=io.BytesIO(image_data),
-                    caption=f"🎨 Сгенерировано по запросу: {prompt}\n\n💎 Потрачено: {GENERATION_COST} рубина"
+                    caption=f"🎨 Сгенерировано по запросу: {short_prompt}\n\n💎 Потрачено: {GENERATION_COST} рубина"
                 )
                 
                 # Показываем новый баланс
