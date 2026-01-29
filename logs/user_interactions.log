@@ -194,3 +194,22 @@ shot from a low angle with strong f...
 2026-01-26 17:28:32 - USER: @aizat_004 (ID: 7543125829) | COMMAND: /profile
 2026-01-26 17:28:33 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /send
 2026-01-26 17:28:33 - USER: @mult1fruckt (ID: 1303908054) | ACTION: transfer_rubies | TO: @aizat_004 (ID: 7543125829) | AMOUNT: 5
+2026-01-29 20:24:47 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-29 20:24:55 - USER: @mult1fruckt (ID: 1303908054) | ACTION: select_model | MODEL: Seedream 4.5
+2026-01-29 20:24:56 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-29 20:25:00 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-29 20:25:05 - USER: @mult1fruckt (ID: 1303908054) | ACTION: generate_image | PROMPT: Кот в космосе...
+2026-01-29 20:26:09 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-29 20:26:11 - USER: @mult1fruckt (ID: 1303908054) | ACTION: select_model | MODEL: FLUX.2 Pro
+2026-01-29 20:26:14 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-29 20:26:22 - USER: @mult1fruckt (ID: 1303908054) | ACTION: generate_image | PROMPT: Кот в космосе"...
+2026-01-29 20:26:27 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-29 20:26:29 - USER: @mult1fruckt (ID: 1303908054) | ACTION: select_model | MODEL: Nano banana
+2026-01-29 20:26:33 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-29 20:26:34 - USER: @mult1fruckt (ID: 1303908054) | ACTION: generate_image | PROMPT: Кот в космосе"...
+2026-01-29 20:26:43 - USER: @mult1fruckt (ID: 1303908054) | ACTION: image_generated | COST: 5 rubies | SUCCESS
+2026-01-29 20:33:12 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /models
+2026-01-29 20:33:14 - USER: @mult1fruckt (ID: 1303908054) | ACTION: select_model | MODEL: Seedream 4.5
+2026-01-29 20:33:16 - USER: @mult1fruckt (ID: 1303908054) | COMMAND: /generate
+2026-01-29 20:33:21 - USER: @mult1fruckt (ID: 1303908054) | ACTION: generate_image | PROMPT: Кот в космосе...
+2026-01-29 20:33:36 - USER: @mult1fruckt (ID: 1303908054) | ACTION: image_generated | COST: 5 rubies | SUCCESS

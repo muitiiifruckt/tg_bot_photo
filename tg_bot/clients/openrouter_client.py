@@ -51,7 +51,9 @@ class OpenRouterClient:
             response = self.client.chat.completions.create(
                 model=model_to_use,
                 messages=[{"role": "user", "content": content}],
-                extra_body={"modalities": ["image", "text"]},
+                # We only need image output from all models.
+                # Requesting ["image", "text"] can fail for some providers/models.
+                extra_body={"modalities": ["image"]},
             )
 
             message = response.choices[0].message
