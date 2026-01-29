@@ -49,3 +49,5 @@ Thumbs.db
 logs/
 *.log
 feedback.jsonl
+data/
+.pytest_cache/

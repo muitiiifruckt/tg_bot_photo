@@ -10,8 +10,8 @@ services:
     volumes:
       # Сохраняем базу данных, feedback файлы и логи на хосте
       - ./data:/app/data
-      - ./feedback.jsonl:/app/feedback.jsonl
       # Логи взаимодействий с пользователями (директория для логов)
       - ./logs:/app/logs
     environment:
       - DATABASE_PATH=/app/data/bot_database.db
+      - FEEDBACK_PATH=/app/data/feedback.jsonl

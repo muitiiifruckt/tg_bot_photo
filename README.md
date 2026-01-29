@@ -60,6 +60,37 @@ cp .env.example .env
 python bot.py
 ```
 
+## Тесты
+
+Установить dev-зависимости и запустить:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+### Интеграционные тесты (реальные API)
+
+По умолчанию **выключены** (чтобы случайно не тратить деньги / не создавать платежи).
+
+- **OpenRouter smoke (без затрат)**:
+
+```bash
+set RUN_INTEGRATION=1
+set OPENROUTER_API_KEY=...
+pytest -m integration
+```
+
+- **Дорогие тесты (генерация изображения / создание платежа)**:
+
+```bash
+set RUN_EXPENSIVE=1
+set OPENROUTER_API_KEY=...
+set YOOKASSA_SHOP_ID=...
+set YOOKASSA_SECRET_KEY=...
+pytest -m expensive
+```
+
 ## Использование
 
 ### Команды бота
@@ -90,15 +121,21 @@ python bot.py
 
 ```
 tg_photo_bot/
-├── bot.py                 # Основной файл бота
-├── config.py              # Конфигурация
-├── database.py            # Работа с базой данных
-├── openrouter_client.py   # Клиент для OpenRouter API
-├── yookassa_payment.py    # Интеграция с ЮКассой
+├── bot.py                 # Entry-point (запуск бота)
+├── tg_bot/                # Основной код бота (пакет)
+│   ├── app.py              # Сборка Application + регистрация handlers
+│   ├── core/config.py      # Конфигурация (.env + env vars)
+│   ├── db/database.py      # SQLite слой
+│   ├── clients/            # Клиенты внешних API (OpenRouter)
+│   ├── payments/           # Платежные интеграции (YooKassa)
+│   ├── models/             # Модели и цены (models_pricing.json)
+│   ├── handlers/           # Telegram handlers по доменам
+│   └── services/           # Бизнес-логика (генерация и т.п.)
+├── data/                  # Данные (SQLite, feedback)
 ├── requirements.txt       # Зависимости
-├── .env.example          # Пример файла с переменными окружения
-├── README.md             # Документация
-└── bot_database.db       # База данных SQLite (создается автоматически)
+├── README.md              # Документация
+├── Dockerfile
+└── docker-compose.yml
 ```
 
 ## База данных

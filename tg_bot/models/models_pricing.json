@@ -13,7 +13,22 @@
       "description": "Премиум модель с улучшенным качеством и детализацией.",
       "price_rubies": 20,
       "enabled": true
+    },
+    {
+      "openrouter_name": "bytedance-seed/seedream-4.5",
+      "display_name": "Seedream 4.5",
+      "description": "Генерация изображений (Seedream 4.5).",
+      "price_rubies": 5,
+      "enabled": true
+    },
+    {
+      "openrouter_name": "black-forest-labs/flux.2-pro",
+      "display_name": "FLUX.2 Pro",
+      "description": "Генерация изображений (FLUX.2 Pro).",
+      "price_rubies": 5,
+      "enabled": true
     }
   ],
   "default_model": "google/gemini-2.5-flash-image"
 }
+
